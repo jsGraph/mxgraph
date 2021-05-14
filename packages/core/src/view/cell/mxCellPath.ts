@@ -18,7 +18,6 @@ class mxCellPath {
   /**
    * Defines the separator between the path components. Default is ".".
    */
-  // static PATH_SEPARATOR: string;
   static PATH_SEPARATOR = '.';
 
   /**
@@ -30,20 +29,16 @@ class mxCellPath {
    *
    * cell - Cell whose path should be returned.
    */
-  // static create(cell: mxCell): string;
   static create(cell: mxCell): string {
     let result = '';
+    let parent = cell.getParent();
 
-    if (cell != null) {
-      let parent = cell.getParent();
+    while (parent) {
+      const index = parent.getIndex(cell);
+      result = index + mxCellPath.PATH_SEPARATOR + result;
 
-      while (parent != null) {
-        const index = parent.getIndex(cell);
-        result = index + mxCellPath.PATH_SEPARATOR + result;
-
-        cell = parent;
-        parent = cell.getParent();
-      }
+      cell = parent;
+      parent = cell.getParent();
     }
 
     // Remove trailing separator
@@ -62,18 +57,16 @@ class mxCellPath {
    *
    * path - Path whose parent path should be returned.
    */
-  // static getParentPath(path: string): string;
-  static getParentPath(path: string): string | null {
-    if (path != null) {
-      const index = path.lastIndexOf(mxCellPath.PATH_SEPARATOR);
+  static getParentPath(path: string) {
+    const index = path.lastIndexOf(mxCellPath.PATH_SEPARATOR);
 
-      if (index >= 0) {
-        return path.substring(0, index);
-      }
-      if (path.length > 0) {
-        return '';
-      }
+    if (index >= 0) {
+      return path.substring(0, index);
     }
+    if (path.length > 0) {
+      return '';
+    }
+
     return null;
   }
 
@@ -86,15 +79,14 @@ class mxCellPath {
    * root - Root cell of the path to be resolved.
    * path - String that defines the path.
    */
-  // static resolve(root: string, path: string): string;
-  static resolve(root: mxCell, path: string): mxCell | null {
-    let parent: mxCell | null | undefined = root;
-    if (path != null) {
-      const tokens = path.split(mxCellPath.PATH_SEPARATOR);
-      for (let i = 0; i < tokens.length; i += 1) {
-        parent = parent?.getChildAt(parseInt(tokens[i])) || null;
-      }
+  static resolve(root: mxCell, path: string) {
+    let parent: mxCell | null = root;
+
+    const tokens = path.split(mxCellPath.PATH_SEPARATOR);
+    for (let i = 0; i < tokens.length; i += 1) {
+      parent = parent.getChildAt(parseInt(tokens[i]));
     }
+
     return parent;
   }
 
@@ -102,8 +94,7 @@ class mxCellPath {
    * Compares the given cell paths and returns -1 if p1 is smaller, 0 if
    * p1 is equal and 1 if p1 is greater than p2.
    */
-  // static compare(p1: string, p2: string): number;
-  static compare(p1: string, p2: string): number {
+  static compare(p1: string[], p2: string[]) {
     const min = Math.min(p1.length, p2.length);
     let comp = 0;
 

@@ -19,12 +19,17 @@ import mxPoint from './mxPoint';
  * are given then the respective default values are used.
  */
 class mxRectangle extends mxPoint {
-  constructor(x, y, width, height) {
+  constructor(
+    x: number = 0,
+    y: number = 0,
+    width: number = 0,
+    height: number = 0
+  ) {
     super(x, y);
 
     // replace super of mxPoint
-    this.width = width != null ? width : 0;
-    this.height = height != null ? height : 0;
+    this.width = width;
+    this.height = height;
   }
 
   /**
@@ -32,24 +37,41 @@ class mxRectangle extends mxPoint {
    *
    * Holds the width of the rectangle. Default is 0.
    */
-  // width: number;
-  width = null;
+  _width = 0;
 
   /**
    * Variable: height
    *
    * Holds the height of the rectangle. Default is 0.
    */
-  // height: number;
-  height = null;
+  _height = 0;
+
+  get width() {
+    return this._width;
+  }
+
+  set width(width: number) {
+    if (Number.isNaN(width)) throw new Error('Invalid width supplied.');
+
+    this._width = width;
+  }
+
+  get height() {
+    return this._height;
+  }
+
+  set height(height: number) {
+    if (Number.isNaN(height)) throw new Error('Invalid height supplied.');
+
+    this._height = height;
+  }
 
   /**
    * Function: fromRectangle
    *
    * Returns a new <mxRectangle> which is a copy of the given rectangle.
    */
-  // static fromRectangle(rect: mxRectangle): mxRectangle;
-  static fromRectangle = rect => {
+  static fromRectangle = (rect: mxRectangle) => {
     return new mxRectangle(rect.x, rect.y, rect.width, rect.height);
   };
 
@@ -58,12 +80,11 @@ class mxRectangle extends mxPoint {
    *
    * Sets this rectangle to the specified values
    */
-  // setRect(x: number, y: number, w: number, h: number): void;
-  setRect(x, y, w, h) {
+  setRect(x: number, y: number, width: number, height: number) {
     this.x = x;
     this.y = y;
-    this.width = w;
-    this.height = h;
+    this.width = width;
+    this.height = height;
   }
 
   /**
@@ -71,7 +92,6 @@ class mxRectangle extends mxPoint {
    *
    * Returns the x-coordinate of the center point.
    */
-  // getCenterX(): number;
   getCenterX() {
     return this.x + this.width / 2;
   }
@@ -81,7 +101,6 @@ class mxRectangle extends mxPoint {
    *
    * Returns the y-coordinate of the center point.
    */
-  // getCenterY(): number;
   getCenterY() {
     return this.y + this.height / 2;
   }
@@ -91,19 +110,16 @@ class mxRectangle extends mxPoint {
    *
    * Adds the given rectangle to this rectangle.
    */
-  // add(rect: mxRectangle): void;
-  add(rect) {
-    if (rect != null) {
-      const minX = Math.min(this.x, rect.x);
-      const minY = Math.min(this.y, rect.y);
-      const maxX = Math.max(this.x + this.width, rect.x + rect.width);
-      const maxY = Math.max(this.y + this.height, rect.y + rect.height);
+  add(rect: mxRectangle) {
+    const minX = Math.min(this.x, rect.x);
+    const minY = Math.min(this.y, rect.y);
+    const maxX = Math.max(this.x + this.width, rect.x + rect.width);
+    const maxY = Math.max(this.y + this.height, rect.y + rect.height);
 
-      this.x = minX;
-      this.y = minY;
-      this.width = maxX - minX;
-      this.height = maxY - minY;
-    }
+    this.x = minX;
+    this.y = minY;
+    this.width = maxX - minX;
+    this.height = maxY - minY;
   }
 
   /**
@@ -111,20 +127,17 @@ class mxRectangle extends mxPoint {
    *
    * Changes this rectangle to where it overlaps with the given rectangle.
    */
-  // intersect(rect: mxRectangle): void;
-  intersect(rect) {
-    if (rect != null) {
-      const r1 = this.x + this.width;
-      const r2 = rect.x + rect.width;
+  intersect(rect: mxRectangle) {
+    const r1 = this.x + this.width;
+    const r2 = rect.x + rect.width;
 
-      const b1 = this.y + this.height;
-      const b2 = rect.y + rect.height;
+    const b1 = this.y + this.height;
+    const b2 = rect.y + rect.height;
 
-      this.x = Math.max(this.x, rect.x);
-      this.y = Math.max(this.y, rect.y);
-      this.width = Math.min(r1, r2) - this.x;
-      this.height = Math.min(b1, b2) - this.y;
-    }
+    this.x = Math.max(this.x, rect.x);
+    this.y = Math.max(this.y, rect.y);
+    this.width = Math.min(r1, r2) - this.x;
+    this.height = Math.min(b1, b2) - this.y;
   }
 
   /**
@@ -134,14 +147,11 @@ class mxRectangle extends mxPoint {
    * the given amount from the x- and y-coordinates and adds twice the amount
    * to the width and height.
    */
-  // grow(amount: number): void;
-  grow(amount) {
+  grow(amount: number) {
     this.x -= amount;
     this.y -= amount;
     this.width += 2 * amount;
     this.height += 2 * amount;
-
-    return this;
   }
 
   /**
@@ -149,7 +159,6 @@ class mxRectangle extends mxPoint {
    *
    * Returns the top, left corner as a new <mxPoint>.
    */
-  // getPoint(): mxPoint;
   getPoint() {
     return new mxPoint(this.x, this.y);
   }
@@ -159,11 +168,11 @@ class mxRectangle extends mxPoint {
    *
    * Rotates this rectangle by 90 degree around its center point.
    */
-  // rotate90(): void;
   rotate90() {
     const t = (this.width - this.height) / 2;
     this.x += t;
     this.y -= t;
+
     const tmp = this.width;
     this.width = this.height;
     this.height = tmp;
@@ -174,14 +183,14 @@ class mxRectangle extends mxPoint {
    *
    * Returns true if the given object equals this rectangle.
    */
-  // equals(obj: mxRectangle): boolean;
-  equals(obj) {
+  equals(rect: mxRectangle | null) {
+    if (!rect) return false;
+
     return (
-      obj != null &&
-      obj.x === this.x &&
-      obj.y === this.y &&
-      obj.width === this.width &&
-      obj.height === this.height
+      rect.x === this.x &&
+      rect.y === this.y &&
+      rect.width === this.width &&
+      rect.height === this.height
     );
   }
 

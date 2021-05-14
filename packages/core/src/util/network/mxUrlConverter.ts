@@ -21,7 +21,6 @@ class mxUrlConverter {
    *
    * Specifies if the converter is enabled. Default is true.
    */
-  // enabled: boolean;
   enabled = true;
 
   /**
@@ -29,23 +28,20 @@ class mxUrlConverter {
    *
    * Specifies the base URL to be used as a prefix for relative URLs.
    */
-  // baseUrl: string;
-  baseUrl = null;
+  baseUrl: string | null = null;
 
   /**
    * Variable: baseDomain
    *
    * Specifies the base domain to be used as a prefix for absolute URLs.
    */
-  // baseDomain: string;
-  baseDomain = null;
+  baseDomain: string | null = null;
 
   /**
    * Function: updateBaseUrl
    *
    * Private helper function to update the base URL.
    */
-  // updateBaseUrl(): void;
   updateBaseUrl() {
     this.baseDomain = `${location.protocol}//${location.host}`;
     this.baseUrl = this.baseDomain + location.pathname;
@@ -62,7 +58,6 @@ class mxUrlConverter {
    *
    * Returns <enabled>.
    */
-  // isEnabled(): boolean;
   isEnabled() {
     return this.enabled;
   }
@@ -72,8 +67,7 @@ class mxUrlConverter {
    *
    * Sets <enabled>.
    */
-  // setEnabled(value: boolean): void;
-  setEnabled(value) {
+  setEnabled(value: boolean) {
     this.enabled = value;
   }
 
@@ -82,7 +76,6 @@ class mxUrlConverter {
    *
    * Returns <baseUrl>.
    */
-  // getBaseUrl(): string;
   getBaseUrl() {
     return this.baseUrl;
   }
@@ -92,8 +85,7 @@ class mxUrlConverter {
    *
    * Sets <baseUrl>.
    */
-  // setBaseUrl(value: string): void;
-  setBaseUrl(value) {
+  setBaseUrl(value: string) {
     this.baseUrl = value;
   }
 
@@ -102,7 +94,6 @@ class mxUrlConverter {
    *
    * Returns <baseDomain>.
    */
-  // getBaseDomain(): string;
   getBaseDomain() {
     return this.baseDomain;
   }
@@ -112,8 +103,7 @@ class mxUrlConverter {
    *
    * Sets <baseDomain>.
    */
-  // setBaseDomain(value: string): void;
-  setBaseDomain(value) {
+  setBaseDomain(value: string) {
     this.baseDomain = value;
   }
 
@@ -122,15 +112,14 @@ class mxUrlConverter {
    *
    * Returns true if the given URL is relative.
    */
-  // isRelativeUrl(url: string): boolean;
-  isRelativeUrl(url) {
+  isRelativeUrl(url: string) {
     return (
-      url != null &&
-      url.substring(0, 2) != '//' &&
-      url.substring(0, 7) != 'http://' &&
-      url.substring(0, 8) != 'https://' &&
-      url.substring(0, 10) != 'data:image' &&
-      url.substring(0, 7) != 'file://'
+      url &&
+      url.substring(0, 2) !== '//' &&
+      url.substring(0, 7) !== 'http://' &&
+      url.substring(0, 8) !== 'https://' &&
+      url.substring(0, 10) !== 'data:image' &&
+      url.substring(0, 7) !== 'file://'
     );
   }
 
@@ -140,14 +129,13 @@ class mxUrlConverter {
    * Converts the given URL to an absolute URL with protol and domain.
    * Relative URLs are first converted to absolute URLs.
    */
-  // convert(url: string): string;
-  convert(url) {
+  convert(url: string) {
     if (this.isEnabled() && this.isRelativeUrl(url)) {
-      if (this.getBaseUrl() == null) {
+      if (!this.getBaseUrl()) {
         this.updateBaseUrl();
       }
 
-      if (url.charAt(0) == '/') {
+      if (url.charAt(0) === '/') {
         url = this.getBaseDomain() + url;
       } else {
         url = this.getBaseUrl() + url;

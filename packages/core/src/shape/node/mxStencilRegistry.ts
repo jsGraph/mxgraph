@@ -23,6 +23,12 @@
  * (end)
  */
 
+import mxStencil from './mxStencil';
+
+type Stencils = {
+  [k: string]: mxStencil;
+};
+
 /**
  * A singleton class that provides a registry for stencils and the methods
  * for painting those stencils onto a canvas or into a DOM.
@@ -30,7 +36,7 @@
  * @class mxStencilRegistry
  */
 class mxStencilRegistry {
-  static stencils = {};
+  static stencils: Stencils = {};
 
   /**
    * Adds the given <mxStencil>.
@@ -38,8 +44,7 @@ class mxStencilRegistry {
    * @param {string} name
    * @param {mxStencil} stencil
    */
-  // static addStencil(name: string, stencil: mxStencil): void;
-  static addStencil(name, stencil) {
+  static addStencil(name: string, stencil: mxStencil) {
     mxStencilRegistry.stencils[name] = stencil;
   }
 
@@ -49,8 +54,7 @@ class mxStencilRegistry {
    * @param {string} name
    * @returns {mxStencil}
    */
-  // static getStencil(name: string): mxStencil;
-  static getStencil(name) {
+  static getStencil(name: string) {
     return mxStencilRegistry.stencils[name];
   }
 }

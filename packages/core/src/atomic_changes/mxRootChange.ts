@@ -1,3 +1,8 @@
+import mxCell from '../view/cell/mxCell';
+import mxGraphModel from '../view/graph/mxGraphModel';
+
+import type { UndoableChange } from '../types';
+
 /**
  * Action to change the root in a model.
  *
@@ -8,8 +13,12 @@
  *
  * @class mxRootChange
  */
-class mxRootChange {
-  constructor(model, root) {
+class mxRootChange implements UndoableChange {
+  model: mxGraphModel;
+  root: mxCell | null;
+  previous: mxCell | null;
+
+  constructor(model: mxGraphModel, root: mxCell | null) {
     this.model = model;
     this.root = root;
     this.previous = root;
@@ -19,7 +28,6 @@ class mxRootChange {
    * Carries out a change of the root using
    * <mxGraphModel.rootChanged>.
    */
-  // execute(): void;
   execute() {
     this.root = this.previous;
     this.previous = this.model.rootChanged(this.previous);
@@ -27,4 +35,3 @@ class mxRootChange {
 }
 
 export default mxRootChange;
-// import('../serialization/mxRootChangeCodec');

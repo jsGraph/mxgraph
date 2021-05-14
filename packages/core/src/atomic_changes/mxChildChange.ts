@@ -1,3 +1,8 @@
+import mxGraphModel from '../view/graph/mxGraphModel';
+
+import type { UndoableChange } from '../types';
+import mxCell from '../view/cell/mxCell';
+
 /**
  * Action to add or remove a child in a model.
  *
@@ -8,8 +13,20 @@
  *
  * @class mxChildChange
  */
-class mxChildChange {
-  constructor(model, parent, child, index) {
+class mxChildChange implements UndoableChange {
+  model: mxGraphModel;
+  parent: mxCell | null;
+  child: mxCell;
+  previous: mxCell | null;
+  index: number;
+  previousIndex: number;
+
+  constructor(
+    model: mxGraphModel,
+    parent: mxCell | null,
+    child: mxCell,
+    index: number = 0
+  ) {
     this.model = model;
     this.parent = parent;
     this.previous = parent;
@@ -24,31 +41,28 @@ class mxChildChange {
    * removes or restores the cell's
    * connections.
    */
-  // execute(): void;
   execute() {
-    if (this.child != null) {
-      let tmp = this.child.getParent();
-      const tmp2 = tmp != null ? tmp.getIndex(this.child) : 0;
+    let tmp = this.child.getParent();
+    const tmp2 = tmp ? tmp.getIndex(this.child) : 0;
 
-      if (this.previous == null) {
-        this.connect(this.child, false);
-      }
-
-      tmp = this.model.parentForCellChanged(
-        this.child,
-        this.previous,
-        this.previousIndex
-      );
-
-      if (this.previous != null) {
-        this.connect(this.child, true);
-      }
-
-      this.parent = this.previous;
-      this.previous = tmp;
-      this.index = this.previousIndex;
-      this.previousIndex = tmp2;
+    if (!this.previous) {
+      this.connect(this.child, false);
     }
+
+    tmp = this.model.parentForCellChanged(
+      this.child,
+      this.previous,
+      this.previousIndex
+    );
+
+    if (this.previous) {
+      this.connect(this.child, true);
+    }
+
+    this.parent = this.previous;
+    this.previous = tmp;
+    this.index = this.previousIndex;
+    this.previousIndex = tmp2;
   }
 
   /**
@@ -58,14 +72,11 @@ class mxChildChange {
    *
    * @warning doc from mxGraph source code is incorrect
    */
-  // connect(cell: mxCell, isConnect: boolean): void;
-  connect(cell, isConnect) {
-    isConnect = isConnect != null ? isConnect : true;
-
+  connect(cell: mxCell, isConnect: boolean = true) {
     const source = cell.getTerminal(true);
     const target = cell.getTerminal(false);
 
-    if (source != null) {
+    if (source) {
       if (isConnect) {
         this.model.terminalForCellChanged(cell, source, true);
       } else {
@@ -73,7 +84,7 @@ class mxChildChange {
       }
     }
 
-    if (target != null) {
+    if (target) {
       if (isConnect) {
         this.model.terminalForCellChanged(cell, target, false);
       } else {
@@ -93,4 +104,3 @@ class mxChildChange {
 }
 
 export default mxChildChange;
-// import('../serialization/mxChildChangeCodec');

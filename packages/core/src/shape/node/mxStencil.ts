@@ -9,7 +9,7 @@ import mxConnectionConstraint from '../../view/connection/mxConnectionConstraint
 import mxRectangle from '../../util/datatypes/mxRectangle';
 import mxShape from '../mxShape';
 import mxResources from '../../util/mxResources';
-import mxUtils from '../../util/mxUtils';
+import mxUtils, { getNumber, getValue, isNotNullish } from '../../util/mxUtils';
 import {
   DIRECTION_NORTH,
   DIRECTION_SOUTH,
@@ -19,6 +19,8 @@ import {
 } from '../../util/mxConstants';
 import mxStencilRegistry from './mxStencilRegistry';
 import { getChildNodes, getTextContent } from '../../util/mxDomUtils';
+import mxPoint from '../../util/datatypes/mxPoint';
+import mxSvgCanvas2D from '../../util/canvas/mxSvgCanvas2D';
 
 /**
  * Implements a generic shape which is based on a XML node as a description.
@@ -26,7 +28,7 @@ import { getChildNodes, getTextContent } from '../../util/mxDomUtils';
  * @class mxStencil
  */
 class mxStencil extends mxShape {
-  constructor(desc) {
+  constructor(desc: Element) {
     super();
     this.desc = desc;
     this.parseDescription();
@@ -39,8 +41,7 @@ class mxStencil extends mxShape {
    * Static global variable that specifies the default value for the localized
    * attribute of the text element. Default is false.
    */
-  // defaultLocalized: boolean;
-  defaultLocalized = false;
+  static defaultLocalized = false;
 
   /**
    * Function: allowEval
@@ -49,48 +50,42 @@ class mxStencil extends mxShape {
    * evaluating text content and images. Default is false. Set this to true
    * if stencils can not contain user input.
    */
-  // allowEval: boolean;
-  allowEval = false;
+  static allowEval = false;
 
   /**
    * Variable: desc
    *
    * Holds the XML node with the stencil description.
    */
-  // desc: Element;
-  desc = null;
+  desc: Element;
 
   /**
    * Variable: constraints
    *
    * Holds an array of <mxConnectionConstraints> as defined in the shape.
    */
-  // constraints: mxConnectionConstraint[];
-  constraints = null;
+  constraints: mxConnectionConstraint[] = [];
 
   /**
    * Variable: aspect
    *
    * Holds the aspect of the shape. Default is 'auto'.
    */
-  // aspect: string;
-  aspect = null;
+  aspect = 'auto';
 
   /**
    * Variable: w0
    *
    * Holds the width of the shape. Default is 100.
    */
-  // w0: number;
-  w0 = null;
+  w0 = 100;
 
   /**
    * Variable: h0
    *
    * Holds the height of the shape. Default is 100.
    */
-  // h0: number;
-  h0 = null;
+  h0 = 100;
 
   /**
    * Variable: bgNodes
@@ -98,30 +93,27 @@ class mxStencil extends mxShape {
    * Holds the XML node with the stencil description.
    */
   // bgNode: Element;
-  bgNode = null;
+  bgNode: Element | null = null;
 
   /**
    * Variable: fgNodes
    *
    * Holds the XML node with the stencil description.
    */
-  // fgNode: Element;
-  fgNode = null;
+  fgNode: Element | null = null;
 
   /**
    * Variable: strokewidth
    *
    * Holds the strokewidth direction from the description.
    */
-  // strokewidth: number;
-  strokewidth = null;
+  strokeWidth: string | null = null;
 
   /**
    * Function: parseDescription
    *
    * Reads <w0>, <h0>, <aspect>, <bgNodes> and <fgNodes> from <desc>.
    */
-  // parseDescription(): void;
   parseDescription() {
     // LATER: Preprocess nodes for faster painting
     this.fgNode = this.desc.getElementsByTagName('foreground')[0];
@@ -133,14 +125,14 @@ class mxStencil extends mxShape {
     // variable means fill the available space and fixed means
     // use w0 and h0 to compute the aspect.
     const aspect = this.desc.getAttribute('aspect');
-    this.aspect = aspect != null ? aspect : 'variable';
+    this.aspect = aspect ?? 'variable';
 
     // Possible values for strokewidth are all numbers and "inherit"
     // where the inherit means take the value from the style (ie. the
     // user-defined stroke-width). Note that the strokewidth is scaled
     // by the minimum scaling that is used to draw the shape (sx, sy).
     const sw = this.desc.getAttribute('strokewidth');
-    this.strokewidth = sw != null ? sw : '1';
+    this.strokeWidth = isNotNullish(sw) ? sw : '1';
   }
 
   /**
@@ -149,7 +141,6 @@ class mxStencil extends mxShape {
    * Reads the constraints from <desc> into <constraints> using
    * <parseConstraint>.
    */
-  // parseConstraints(): void;
   parseConstraints() {
     const conns = this.desc.getElementsByTagName('connections')[0];
 
@@ -171,8 +162,7 @@ class mxStencil extends mxShape {
    *
    * Parses the given XML node and returns its <mxConnectionConstraint>.
    */
-  // parseConstraint(node: Element): void;
-  parseConstraint(node) {
+  parseConstraint(node: Element) {
     const x = Number(node.getAttribute('x'));
     const y = Number(node.getAttribute('y'));
     const perimeter = node.getAttribute('perimeter') == '1';
@@ -188,8 +178,7 @@ class mxStencil extends mxShape {
    * is used as a key to <mxResources.get> if the localized attribute in the text
    * node is 1 or if <defaultLocalized> is true.
    */
-  // evaluateTextAttribute(node: string, attribute: string, shape: string): string;
-  evaluateTextAttribute(node, attribute, shape) {
+  evaluateTextAttribute(node: Element, attribute: string, shape: mxShape) {
     let result = this.evaluateAttribute(node, attribute, shape);
     const loc = node.getAttribute('localized');
 
@@ -208,8 +197,7 @@ class mxStencil extends mxShape {
    * a function it is invoked with <shape> as the only argument and the return
    * value is used as the attribute value to be returned.
    */
-  // evaluateAttribute(node: string, attribute: string, shape: string): string;
-  evaluateAttribute(node, attribute, shape) {
+  evaluateAttribute(node: Element, attribute: string, shape: mxShape) {
     let result = node.getAttribute(attribute);
 
     if (result == null) {
@@ -232,8 +220,14 @@ class mxStencil extends mxShape {
    *
    * Draws this stencil inside the given bounds.
    */
-  // drawShape(canvas: mxAbstractCanvas2D, shape: string, x: number, y: number, w: number, h: number): void;
-  drawShape(canvas, shape, x, y, w, h) {
+  drawShape(
+    canvas: mxSvgCanvas2D,
+    shape: mxShape,
+    x: number,
+    y: number,
+    w: number,
+    h: number
+  ) {
     const stack = canvas.states.slice();
 
     // TODO: Internal structure (array of special structs?), relative and absolute
@@ -242,19 +236,19 @@ class mxStencil extends mxShape {
     // (start, segment, end blocks), pluggable markers, how to implement
     // swimlanes (title area) with this API, add icon, horizontal/vertical
     // label, indicator for all shapes, rotation
-    const direction = mxUtils.getValue(shape.style, 'direction', null);
-    const aspect = this.computeAspect(shape.style, x, y, w, h, direction);
+    const direction = getValue(shape.style, 'direction', null);
+    const aspect = this.computeAspect(shape, x, y, w, h, direction);
     const minScale = Math.min(aspect.width, aspect.height);
     const sw =
-      this.strokewidth == 'inherit'
-        ? Number(mxUtils.getNumber(shape.style, 'strokeWidth', 1))
-        : Number(this.strokewidth) * minScale;
+      this.strokeWidth == 'inherit'
+        ? Number(getNumber(shape.style, 'strokeWidth', 1))
+        : Number(this.strokeWidth) * minScale;
     canvas.setStrokeWidth(sw);
 
     // Draws a transparent rectangle for catching events
     if (
       shape.style != null &&
-      mxUtils.getValue(shape.style, 'pointerEvents', '0') == '1'
+      getValue(shape.style, 'pointerEvents', '0') == '1'
     ) {
       canvas.setStrokeColor(NONE);
       canvas.rect(x, y, w, h);
@@ -286,7 +280,7 @@ class mxStencil extends mxShape {
       true,
       !shape.outline ||
         shape.style == null ||
-        mxUtils.getValue(shape.style, 'backgroundOutline', 0) == 0
+        getValue(shape.style, 'backgroundOutline', 0) == 0
     );
 
     // Restores stack for unequal count of save/restore calls
@@ -300,7 +294,18 @@ class mxStencil extends mxShape {
    *
    * Draws this stencil inside the given bounds.
    */
-  drawChildren(canvas, shape, x, y, w, h, node, aspect, disableShadow, paint) {
+  drawChildren(
+    canvas: mxSvgCanvas2D,
+    shape: mxShape,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    node: Element | null,
+    aspect: string,
+    disableShadow: boolean,
+    paint: boolean
+  ) {
     if (node != null && w > 0 && h > 0) {
       let tmp = node.firstChild;
 
@@ -327,8 +332,14 @@ class mxStencil extends mxShape {
    * bounds - <mxRectangle> that should contain the stencil.
    * direction - Optional direction of the shape to be darwn.
    */
-  // computeAspect(shape: string, x: number, y: number, w: number, h: number, direction?: string): mxRectangle;
-  computeAspect(shape, x, y, w, h, direction) {
+  computeAspect(
+    shape: mxShape,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    direction?: string
+  ) {
     let x0 = x;
     let y0 = y;
     let sx = w / this.w0;
@@ -369,7 +380,14 @@ class mxStencil extends mxShape {
    *
    * Draws this stencil inside the given bounds.
    */
-  drawNode(canvas, shape, node, aspect, disableShadow, paint) {
+  drawNode(
+    canvas: mxSvgCanvas2D,
+    shape: mxShape,
+    node: Element,
+    aspect: mxRectangle,
+    disableShadow: boolean,
+    paint: boolean
+  ) {
     const name = node.nodeName;
     const x0 = aspect.x;
     const y0 = aspect.y;
@@ -493,7 +511,7 @@ class mxStencil extends mxShape {
           Number(node.getAttribute('rx')) * sx,
           Number(node.getAttribute('ry')) * sy,
           Number(node.getAttribute('x-axis-rotation')),
-          Number(node.getAttribute('large-arc-flag')),
+          Boolean(node.getAttribute('large-arc-flag')),
           Number(node.getAttribute('sweep-flag')),
           x0 + Number(node.getAttribute('x')) * sx,
           y0 + Number(node.getAttribute('y')) * sy
@@ -556,8 +574,8 @@ class mxStencil extends mxShape {
             const dr = shape.rotation;
 
             // Depends on flipping
-            const flipH = mxUtils.getValue(shape.style, 'flipH', 0) == 1;
-            const flipV = mxUtils.getValue(shape.style, 'flipV', 0) == 1;
+            const flipH = getValue(shape.style, 'flipH', 0) == 1;
+            const flipV = getValue(shape.style, 'flipV', 0) == 1;
 
             if (flipH && flipV) {
               rotation -= dr;

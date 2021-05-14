@@ -7,6 +7,12 @@
 
 import mxObjectIdentity from './mxObjectIdentity';
 
+type Dictionary<T, U> = {
+  [key: string]: U;
+};
+
+type Visitor<T, U> = (key: string, value: U) => void;
+
 /**
  * Class: mxDictionary
  *
@@ -17,7 +23,7 @@ import mxObjectIdentity from './mxObjectIdentity';
  *
  * Constructs a new dictionary which allows object to be used as keys.
  */
-class mxDictionary {
+class mxDictionary<T, U> {
   constructor() {
     this.clear();
   }
@@ -27,7 +33,7 @@ class mxDictionary {
    *
    * Stores the (key, value) pairs in this dictionary.
    */
-  map = null;
+  map: Dictionary<T, U> = {};
 
   /**
    * Function: clear
@@ -43,7 +49,7 @@ class mxDictionary {
    *
    * Returns the value for the given key.
    */
-  get(key) {
+  get(key: T) {
     const id = mxObjectIdentity.get(key);
 
     return this.map[id];
@@ -55,7 +61,7 @@ class mxDictionary {
    * Stores the value under the given key and returns the previous
    * value for that key.
    */
-  put(key, value) {
+  put(key: T, value: U) {
     const id = mxObjectIdentity.get(key);
     const previous = this.map[id];
     this.map[id] = value;
@@ -69,7 +75,7 @@ class mxDictionary {
    * Removes the value for the given key and returns the value that
    * has been removed.
    */
-  remove(key) {
+  remove(key: T) {
     const id = mxObjectIdentity.get(key);
     const previous = this.map[id];
     delete this.map[id];
@@ -118,7 +124,7 @@ class mxDictionary {
    *
    * visitor - A function that takes the key and value as arguments.
    */
-  visit(visitor) {
+  visit(visitor: Visitor<string, U>) {
     for (const key in this.map) {
       visitor(key, this.map[key]);
     }

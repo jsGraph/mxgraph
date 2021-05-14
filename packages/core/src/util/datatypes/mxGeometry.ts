@@ -7,7 +7,7 @@
 
 import mxPoint from './mxPoint';
 import mxRectangle from './mxRectangle';
-import mxUtils from '../mxUtils';
+import mxUtils, { equalPoints, getRotatedPoint, toRadians } from '../mxUtils';
 import { clone } from '../mxCloneUtils';
 
 /**
@@ -74,14 +74,18 @@ import { clone } from '../mxCloneUtils';
  * defines the absolute offset for the label inside the vertex or group.
  */
 class mxGeometry extends mxRectangle {
-  constructor(x, y, width, height) {
+  constructor(
+    x: number = 0,
+    y: number = 0,
+    width: number = 0,
+    height: number = 0
+  ) {
     super(x, y, width, height);
   }
 
   /**
    * Global switch to translate the points in translate. Default is true.
    */
-  // TRANSLATE_CONTROL_POINTS: boolean;
   TRANSLATE_CONTROL_POINTS = true;
 
   /**
@@ -90,24 +94,21 @@ class mxGeometry extends mxRectangle {
    *
    * @see {@link swap}
    */
-  // alternateBounds: mxRectangle;
-  alternateBounds = null;
+  alternateBounds: mxRectangle | null = null;
 
   /**
    * Defines the source {@link mxPoint} of the edge. This is used if the
    * corresponding edge does not have a source vertex. Otherwise it is
    * ignored. Default is  null.
    */
-  // sourcePoint: mxPoint;
-  sourcePoint = null;
+  sourcePoint: mxPoint | null = null;
 
   /**
    * Defines the target {@link mxPoint} of the edge. This is used if the
    * corresponding edge does not have a target vertex. Otherwise it is
    * ignored. Default is null.
    */
-  // targetPoint: mxPoint;
-  targetPoint = null;
+  targetPoint: mxPoint | null = null;
 
   /**
    * Array of {@link mxPoints} which specifies the control points along the edge.
@@ -115,8 +116,7 @@ class mxGeometry extends mxRectangle {
    * use {@link targetPoint} and {@link sourcePoint} or set the terminals of the edge to
    * a non-null value. Default is null.
    */
-  // points: Array<mxPoint>;
-  points = null;
+  points: mxPoint[] = [];
 
   /**
    * For edges, this holds the offset (in pixels) from the position defined
@@ -125,8 +125,7 @@ class mxGeometry extends mxRectangle {
    * coordinates. For absolute geometries (for vertices), this defines the
    * offset for the label. Default is null.
    */
-  // offset: mxPoint;
-  offset = null;
+  offset: mxPoint | null = null;
 
   /**
    * Specifies if the coordinates in the geometry are to be interpreted as
@@ -141,7 +140,6 @@ class mxGeometry extends mxRectangle {
    *
    * Default is false.
    */
-  // relative: boolean;
   relative = false;
 
   /**
@@ -153,9 +151,8 @@ class mxGeometry extends mxRectangle {
    * calling this method and setting the geometry of the cell using
    * {@link mxGraphModel.setGeometry}.
    */
-  // swap(): void;
   swap() {
-    if (this.alternateBounds != null) {
+    if (this.alternateBounds) {
       const old = new mxRectangle(this.x, this.y, this.width, this.height);
 
       this.x = this.alternateBounds.x;
@@ -173,8 +170,7 @@ class mxGeometry extends mxRectangle {
    *
    * @param {Boolean} isSource that specifies if the source or target point should be returned.
    */
-  // getTerminalPoint(isSource: boolean): mxPoint;
-  getTerminalPoint(isSource) {
+  getTerminalPoint(isSource: boolean) {
     return isSource ? this.sourcePoint : this.targetPoint;
   }
 
@@ -185,8 +181,7 @@ class mxGeometry extends mxRectangle {
    * @param {Point} point to be used as the new source or target point.
    * @param {Boolean} isSource that specifies if the source or target point should be set.
    */
-  // setTerminalPoint(point: mxPoint, isSource: boolean): mxPoint;
-  setTerminalPoint(point, isSource) {
+  setTerminalPoint(point: mxPoint, isSource: boolean) {
     if (isSource) {
       this.sourcePoint = point;
     } else {
@@ -205,73 +200,44 @@ class mxGeometry extends mxRectangle {
    * @param {Number} angle that specifies the rotation angle in degrees.
    * @param {mxPoint} cx   that specifies the center of the rotation.
    */
-  // rotate(angle: number, cx: mxPoint): void;
-  rotate(angle, cx) {
-    const rad = mxUtils.toRadians(angle);
+  rotate(angle: number, cx: mxPoint) {
+    const rad = toRadians(angle);
     const cos = Math.cos(rad);
     const sin = Math.sin(rad);
 
     // Rotates the geometry
     if (!this.relative) {
       const ct = new mxPoint(this.getCenterX(), this.getCenterY());
-      const pt = mxUtils.getRotatedPoint(ct, cos, sin, cx);
+      const pt = getRotatedPoint(ct, cos, sin, cx);
 
       this.x = Math.round(pt.x - this.width / 2);
       this.y = Math.round(pt.y - this.height / 2);
     }
 
     // Rotates the source point
-    if (this.sourcePoint != null) {
-      const pt = mxUtils.getRotatedPoint(this.sourcePoint, cos, sin, cx);
+    if (this.sourcePoint) {
+      const pt = getRotatedPoint(this.sourcePoint, cos, sin, cx);
       this.sourcePoint.x = Math.round(pt.x);
       this.sourcePoint.y = Math.round(pt.y);
     }
 
     // Translates the target point
-    if (this.targetPoint != null) {
-      const pt = mxUtils.getRotatedPoint(this.targetPoint, cos, sin, cx);
+    if (this.targetPoint) {
+      const pt = getRotatedPoint(this.targetPoint, cos, sin, cx);
       this.targetPoint.x = Math.round(pt.x);
       this.targetPoint.y = Math.round(pt.y);
     }
 
     // Translate the control points
-    if (this.points != null) {
+    if (this.points) {
       for (let i = 0; i < this.points.length; i += 1) {
-        if (this.points[i] != null) {
-          const pt = mxUtils.getRotatedPoint(this.points[i], cos, sin, cx);
+        if (this.points[i]) {
+          const pt = getRotatedPoint(this.points[i], cos, sin, cx);
           this.points[i].x = Math.round(pt.x);
           this.points[i].y = Math.round(pt.y);
         }
       }
     }
-  }
-
-  get width() {
-    return this._width || 0;
-  }
-
-  set width(width) {
-    width = parseFloat(width);
-
-    // `null` is used as a default value, so comment this out for now.
-    // if (Number.isNaN(width)) {
-    //   throw new Error('Invalid width supplied');
-    // }
-    this._width = width;
-  }
-
-  get height() {
-    return this._height || 0;
-  }
-
-  set height(height) {
-    height = parseFloat(height);
-
-    // `null` is used as a default value, so comment this out for now.
-    // if (Number.isNaN(height)) {
-    //   throw new Error('Invalid height supplied');
-    // }
-    this._height = height;
   }
 
   /**
@@ -284,11 +250,7 @@ class mxGeometry extends mxRectangle {
    * @param {Number} dx that specifies the x-coordinate of the translation.
    * @param {Number} dy that specifies the y-coordinate of the translation.
    */
-  // translate(dx: number, dy: number): void;
-  translate(dx, dy) {
-    dx = parseFloat(dx);
-    dy = parseFloat(dy);
-
+  translate(dx: number, dy: number) {
     // Translates the geometry
     if (!this.relative) {
       this.x += dx;
@@ -296,21 +258,21 @@ class mxGeometry extends mxRectangle {
     }
 
     // Translates the source point
-    if (this.sourcePoint != null) {
+    if (this.sourcePoint) {
       this.sourcePoint.x = this.sourcePoint.x + dx;
       this.sourcePoint.y = this.sourcePoint.y + dy;
     }
 
     // Translates the target point
-    if (this.targetPoint != null) {
+    if (this.targetPoint) {
       this.targetPoint.x = this.targetPoint.x + dx;
       this.targetPoint.y = this.targetPoint.y + dy;
     }
 
     // Translate the control points
-    if (this.TRANSLATE_CONTROL_POINTS && this.points != null) {
+    if (this.TRANSLATE_CONTROL_POINTS && this.points) {
       for (let i = 0; i < this.points.length; i += 1) {
-        if (this.points[i] != null) {
+        if (this.points[i]) {
           this.points[i].x = this.points[i].x + dx;
           this.points[i].y = this.points[i].y + dy;
         }
@@ -329,30 +291,24 @@ class mxGeometry extends mxRectangle {
    * @param {Number} sy that specifies the vertical scale factor.
    * @param {Optional} fixedAspect boolean to keep the aspect ratio fixed.
    */
-  // scale(sx: number, sy: number, fixedAspect: boolean): void;
-  scale(sx, sy, fixedAspect) {
-    sx = parseFloat(sx);
-    sy = parseFloat(sy);
-
+  scale(sx: number, sy: number, fixedAspect: boolean) {
     // Translates the source point
-    if (this.sourcePoint != null) {
+    if (this.sourcePoint) {
       this.sourcePoint.x = this.sourcePoint.x * sx;
       this.sourcePoint.y = this.sourcePoint.y * sy;
     }
 
     // Translates the target point
-    if (this.targetPoint != null) {
+    if (this.targetPoint) {
       this.targetPoint.x = this.targetPoint.x * sx;
       this.targetPoint.y = this.targetPoint.y * sy;
     }
 
     // Translate the control points
-    if (this.points != null) {
-      for (let i = 0; i < this.points.length; i += 1) {
-        if (this.points[i] != null) {
-          this.points[i].x = this.points[i].x * sx;
-          this.points[i].y = this.points[i].y * sy;
-        }
+    for (let i = 0; i < this.points.length; i += 1) {
+      if (this.points[i]) {
+        this.points[i].x = this.points[i].x * sx;
+        this.points[i].y = this.points[i].y * sy;
       }
     }
 
@@ -373,30 +329,26 @@ class mxGeometry extends mxRectangle {
   /**
    * Returns true if the given object equals this geometry.
    */
-  // equals(obj: mxGeometry): boolean;
-  equals(obj) {
+  equals(geom: mxGeometry | null) {
+    if (!geom) return false;
+
     return (
-      super.equals(obj) &&
-      this.relative === obj.relative &&
-      ((this.sourcePoint == null && obj.sourcePoint == null) ||
-        (this.sourcePoint != null &&
-          this.sourcePoint.equals(obj.sourcePoint))) &&
-      ((this.targetPoint == null && obj.targetPoint == null) ||
-        (this.targetPoint != null &&
-          this.targetPoint.equals(obj.targetPoint))) &&
-      ((this.points == null && obj.points == null) ||
-        (this.points != null &&
-          mxUtils.equalPoints(this.points, obj.points))) &&
-      ((this.alternateBounds == null && obj.alternateBounds == null) ||
-        (this.alternateBounds != null &&
-          this.alternateBounds.equals(obj.alternateBounds))) &&
-      ((this.offset == null && obj.offset == null) ||
-        (this.offset != null && this.offset.equals(obj.offset)))
+      super.equals(geom) &&
+      this.relative === geom.relative &&
+      ((this.sourcePoint === null && geom.sourcePoint === null) ||
+        !!this.sourcePoint?.equals(geom.sourcePoint)) &&
+      ((this.targetPoint === null && geom.targetPoint === null) ||
+        !!this.targetPoint?.equals(geom.targetPoint)) &&
+      equalPoints(this.points, geom.points) &&
+      ((this.alternateBounds === null && geom.alternateBounds === null) ||
+        !!this.alternateBounds?.equals(geom.alternateBounds)) &&
+      ((this.offset === null && geom.offset === null) ||
+        !!this.offset?.equals(geom.offset))
     );
   }
 
   clone() {
-    return clone(this);
+    return clone(this) as mxGeometry;
   }
 }
 

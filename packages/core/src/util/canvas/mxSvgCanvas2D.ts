@@ -5,7 +5,7 @@
  * Type definitions from the typed-mxgraph project
  */
 
-import mxUtils from '../mxUtils';
+import { getAlignmentAsPoint, isNotNullish } from '../mxUtils';
 import mxClient from '../../mxClient';
 import {
   ABSOLUTE_LINE_HEIGHT,
@@ -35,6 +35,12 @@ import mxAbstractCanvas2D from './mxAbstractCanvas2D';
 import { parseXml } from '../mxXmlUtils';
 import { importNodeImplementation, isNode, write } from '../mxDomUtils';
 import { htmlEntities, trim } from '../mxStringUtils';
+import {
+  AlignValue,
+  ColorValue,
+  DirectionValue,
+  GradientMap,
+} from '../../types';
 
 // Activates workaround for gradient ID resolution if base tag is used.
 const useAbsoluteIds =
@@ -82,7 +88,7 @@ const useAbsoluteIds =
  * Or set the respective attribute in the SVG element directly.
  */
 class mxSvgCanvas2D extends mxAbstractCanvas2D {
-  constructor(root, styleEnabled) {
+  constructor(root: SVGElement, styleEnabled: boolean) {
     super();
 
     /**
@@ -97,7 +103,7 @@ class mxSvgCanvas2D extends mxAbstractCanvas2D {
      *
      * Local cache of gradients for quick lookups.
      */
-    this.gradients = [];
+    this.gradients = {};
 
     /**
      * Variable: defs
@@ -153,31 +159,35 @@ class mxSvgCanvas2D extends mxAbstractCanvas2D {
     }
   }
 
+  root: SVGElement;
+
+  gradients: GradientMap;
+
+  defs: SVGDefsElement | null = null;
+
+  styleEnabled = true;
+
   /**
    * Holds the current DOM node.
    */
-  // node: Element;
-  node = null;
+  node: SVGElement | null = null;
 
   /**
    * Specifies if plain text output should match the vertical HTML alignment.
    * @default true.
    */
-  // matchHtmlAlignment: boolean;
   matchHtmlAlignment = true;
 
   /**
    * Specifies if text output should be enabled.
    * @default true
    */
-  // textEnabled: boolean;
   textEnabled = true;
 
   /**
    * Specifies if use of foreignObject for HTML markup is allowed.
    * @default true
    */
-  // foEnabled: boolean;
   foEnabled = true;
 
   /**
@@ -185,101 +195,97 @@ class mxSvgCanvas2D extends mxAbstractCanvas2D {
    * If this is set to `null` then no fallback text is added to the exported document.
    * @default [Object]
    */
-  // foAltText: string;
   foAltText = '[Object]';
 
   /**
    * Offset to be used for foreignObjects.
    * @default 0
    */
-  // foOffset: number;
   foOffset = 0;
 
   /**
    * Offset to be used for text elements.
    * @default 0
    */
-  // textOffset: number;
   textOffset = 0;
 
   /**
    * Offset to be used for image elements.
    * @default 0
    */
-  // imageOffset: number;
   imageOffset = 0;
 
   /**
    * Adds transparent paths for strokes.
    * @default 0
    */
-  // strokeTolerance: number;
   strokeTolerance = 0;
 
   /**
    * Minimum stroke width for output.
    * @default 1
    */
-  // minStrokeWidth: number;
   minStrokeWidth = 1;
 
   /**
    * Local counter for references in SVG export.
    * @default 0
    */
-  // refCount: number;
   refCount = 0;
 
   /**
    * Correction factor for {@link mxConstants.LINE_HEIGHT} in HTML output.
    * @default 1
    */
-  // lineHeightCorrection: number;
   lineHeightCorrection = 1;
 
   /**
    * Default value for active pointer events.
    * @default all
    */
-  // pointerEventsValue: string;
   pointerEventsValue = 'all';
 
   /**
    * Padding to be added for text that is not wrapped to account for differences in font metrics on different platforms in pixels.
    * @default 10.
    */
-  // fontMetricsPadding: number;
   fontMetricsPadding = 10;
 
   /**
    * Specifies if offsetWidth and offsetHeight should be cached. This is used to speed up repaint of text in {@link updateText}.
    * @default true
    */
-  // cacheOffsetSize: boolean;
   cacheOffsetSize = true;
 
   /**
    * Updates existing DOM nodes for text rendering.
    */
   static createCss = (
-    w,
-    h,
-    align,
-    valign,
-    wrap,
-    overflow,
-    clip,
-    bg,
-    border,
-    flex,
-    block,
-    s,
-    callback
+    w: number,
+    h: number,
+    align: AlignValue,
+    valign: string,
+    wrap: boolean,
+    overflow: string,
+    clip: boolean,
+    bg: ColorValue,
+    border: ColorValue,
+    flex: string,
+    block: string,
+    scale: number,
+    callback: (
+      dx: number,
+      dy: number,
+      flex: string,
+      item: string,
+      block: string,
+      ofl: string
+    ) => void
   ) => {
     let item = `box-sizing: border-box; font-size: 0; text-align: ${
       align === ALIGN_LEFT ? 'left' : align === ALIGN_RIGHT ? 'right' : 'center'
     }; `;
-    const pt = mxUtils.getAlignmentAsPoint(align, valign);
+    const pt = getAlignmentAsPoint(align, valign);
     let ofl = 'overflow: hidden; ';
     let fw = 'width: 1px; ';
     let fh = 'height: 1px; ';
@@ -311,11 +317,11 @@ class mxSvgCanvas2D extends mxAbstractCanvas2D {
 
     let bgc = '';
 
-    if (bg != null) {
+    if (bg) {
       bgc += `background-color: ${bg}; `;
     }
 
-    if (border != null) {
+    if (border) {
       bgc += `border: 1px solid ${border}; `;
     }
 
@@ -329,13 +335,13 @@ class mxSvgCanvas2D extends mxAbstractCanvas2D {
       block += `white-space: normal; word-wrap: ${WORD_WRAP}; `;
       fw = `width: ${Math.round(w)}px; `;
 
-      if (ofl != '' && overflow !== 'fill') {
+      if (ofl !== '' && overflow !== 'fill') {
         dy = 0;
       }
     } else {
       block += 'white-space: nowrap; ';
 
-      if (ofl == '') {
+      if (ofl === '') {
         dx = 0;
       }
     }
@@ -346,9 +352,8 @@ class mxSvgCanvas2D extends mxAbstractCanvas2D {
   /**
    * Rounds all numbers to 2 decimal points.
    */
-  // format(value: string): number;
-  format(value) {
-    return parseFloat(parseFloat(value).toFixed(2));
+  format(value: number) {
+    return parseFloat(value.toFixed(2));
   }
 
   /**
@@ -357,7 +362,6 @@ class mxSvgCanvas2D extends mxAbstractCanvas2D {
    * workaround for the fact that window.location.search is empty if there is
    * no search string behind the question mark.
    */
-  // getBaseUrl(): string;
   getBaseUrl() {
     let { href } = window.location;
     const hash = href.lastIndexOf('#');
@@ -372,17 +376,15 @@ class mxSvgCanvas2D extends mxAbstractCanvas2D {
   /**
    * Returns any offsets for rendering pixels.
    */
-  // reset(): void;
   reset() {
     super.reset();
-    this.gradients = [];
+    this.gradients = {};
   }
 
   /**
    * Creates the optional style section.
    */
-  // createStyle(x?: any): HTMLElement;
-  createStyle(x) {
+  createStyle() {
     const style = this.createElement('style');
     style.setAttribute('type', 'text/css');
     write(
@@ -396,21 +398,11 @@ class mxSvgCanvas2D extends mxAbstractCanvas2D {
   /**
    * Private helper function to create SVG elements
    */
-  // createElement(tagName: string, namespace?: string): HTMLElement;
-  createElement(tagName, namespace) {
-    if (this.root.ownerDocument.createElementNS != null) {
-      return this.root.ownerDocument.createElementNS(
-        namespace || NS_SVG,
-        tagName
-      );
-    }
-    const elt = this.root.ownerDocument.createElement(tagName);
-
-    if (namespace != null) {
-      elt.setAttribute('xmlns', namespace);
-    }
-
-    return elt;
+  createElement(tagName: string, namespace?: string) {
+    return this.root.ownerDocument.createElementNS(
+      namespace || NS_SVG,
+      tagName
+    ) as SVGElement;
   }
 
   /**
@@ -419,21 +411,21 @@ class mxSvgCanvas2D extends mxAbstractCanvas2D {
    * Returns the alternate text string for the given foreignObject.
    */
   getAlternateText(
-    fo,
-    x,
-    y,
-    w,
-    h,
-    str,
-    align,
-    valign,
-    wrap,
+    fo: SVGForeignObjectElement,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    str: Element | string,
+    align: AlignValue,
+    valign: string,
+    wrap: boolean,
     format,
-    overflow,
-    clip,
+    overflow: boolean,
+    clip: boolean,
     rotation
   ) {
-    return str != null ? this.foAltText : null;
+    return isNotNullish(str) ? this.foAltText : null;
   }
 
   /**
@@ -448,8 +440,8 @@ class mxSvgCanvas2D extends mxAbstractCanvas2D {
     w,
     h,
     str,
-    align,
-    valign,
+    align: AlignValue,
+    valign: AlignValue,
     wrap,
     format,
     overflow,
@@ -473,7 +465,7 @@ class mxSvgCanvas2D extends mxAbstractCanvas2D {
     );
     const s = this.state;
 
-    if (text != null && s.fontSize > 0) {
+    if (isNotNullish(text) && s.fontSize > 0) {
       const dy = valign === ALIGN_TOP ? 1 : valign === ALIGN_BOTTOM ? 0 : 0.3;
       const anchor =
         align === ALIGN_RIGHT
@@ -483,8 +475,8 @@ class mxSvgCanvas2D extends mxAbstractCanvas2D {
           : 'middle';
 
       const alt = this.createElement('text');
-      alt.setAttribute('x', Math.round(x + s.dx));
-      alt.setAttribute('y', Math.round(y + s.dy + dy * s.fontSize));
+      alt.setAttribute('x', String(Math.round(x + s.dx)));
+      alt.setAttribute('y', String(Math.round(y + s.dy + dy * s.fontSize)));
       alt.setAttribute('fill', s.fontColor || 'black');
       alt.setAttribute('font-family', s.fontFamily);
       alt.setAttribute('font-size', `${Math.round(s.fontSize)}px`);
@@ -527,7 +519,13 @@ class mxSvgCanvas2D extends mxAbstractCanvas2D {
    * Private helper function to create SVG elements
    */
   // createGradientId(start: string, end: string, alpha1: string, alpha2: string, direction: string): string;
-  createGradientId(start, end, alpha1, alpha2, direction) {
+  createGradientId(
+    start: string,
+    end: string,
+    alpha1: number,
+    alpha2: number,
+    direction: DirectionValue
+  ) {
     // Removes illegal characters from gradient ID
     if (start.charAt(0) === '#') {
       start = start.substring(1);

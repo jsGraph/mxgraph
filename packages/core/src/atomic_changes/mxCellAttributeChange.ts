@@ -1,3 +1,8 @@
+import { isNullish } from '../util/mxUtils';
+import mxCell from '../view/cell/mxCell';
+
+import type { UndoableChange } from '../types';
+
 /**
  * Class: mxCellAttributeChange
  *
@@ -30,8 +35,13 @@
  * Constructs a change of a attribute of the DOM node
  * stored as the value of the given {@link mxCell}`.
  */
-class mxCellAttributeChange {
-  constructor(cell, attribute, value) {
+class mxCellAttributeChange implements UndoableChange {
+  cell: mxCell;
+  attribute: string;
+  value: any;
+  previous: any;
+
+  constructor(cell: mxCell, attribute: string, value: any) {
     this.cell = cell;
     this.attribute = attribute;
     this.value = value;
@@ -46,19 +56,16 @@ class mxCellAttributeChange {
    */
   // execute(): void;
   execute() {
-    if (this.cell != null) {
-      const tmp = this.cell.getAttribute(this.attribute);
+    const tmp = this.cell.getAttribute(this.attribute);
 
-      if (this.previous == null) {
-        this.cell.value.removeAttribute(this.attribute);
-      } else {
-        this.cell.setAttribute(this.attribute, this.previous);
-      }
-
-      this.previous = tmp;
+    if (isNullish(this.previous)) {
+      this.cell.value.removeAttribute(this.attribute);
+    } else {
+      this.cell.setAttribute(this.attribute, this.previous);
     }
+
+    this.previous = tmp;
   }
 }
 
 export default mxCellAttributeChange;
-// import('../serialization/mxGenericChangeCodec');

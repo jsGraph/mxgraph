@@ -3,26 +3,30 @@ import mxEventObject from '../util/event/mxEventObject';
 import mxPoint from '../util/datatypes/mxPoint';
 import mxCell from '../view/cell/mxCell';
 import mxEvent from '../util/event/mxEvent';
-import mxGraphModel from '../view/graph/mxGraphModel';
-import mxGraph from "../view/graph/mxGraph";
+
+import type { UndoableChange } from '../types';
 
 /**
  * Class: mxCurrentRootChange
  *
  * Action to change the current root in a view.
  */
-class mxCurrentRootChange {
-  constructor(view: mxGraphView, root: mxCell) {
+class mxCurrentRootChange implements UndoableChange {
+  view: mxGraphView;
+  root: mxCell | null;
+  previous: mxCell | null;
+  isUp: boolean;
+
+  constructor(view: mxGraphView, root: mxCell | null) {
     this.view = view;
     this.root = root;
     this.previous = root;
-    this.isUp = root == null;
+    this.isUp = root === null;
 
     if (!this.isUp) {
-      let tmp: mxCell | null = this.view.currentRoot;
-      const model: mxGraphModel = (<mxGraph>this.view.graph).getModel();
+      let tmp = this.view.currentRoot;
 
-      while (tmp != null) {
+      while (tmp) {
         if (tmp === root) {
           this.isUp = true;
           break;
@@ -32,28 +36,19 @@ class mxCurrentRootChange {
     }
   }
 
-  view: mxGraphView;
-
-  root: mxCell;
-
-  previous: mxCell;
-
-  isUp: boolean;
-
   /**
    * Changes the current root of the view.
    */
-  // execute(): void;
-  execute(): void {
+  execute() {
     const tmp = this.view.currentRoot;
     this.view.currentRoot = this.previous;
-    this.previous = <mxCell>tmp;
+    this.previous = tmp;
 
-    const translate = (<mxGraph>this.view.graph).getTranslateForRoot(
+    const translate = this.view.graph.getTranslateForRoot(
       this.view.currentRoot
     );
 
-    if (translate != null) {
+    if (translate) {
       this.view.translate = new mxPoint(-translate.x, -translate.y);
     }
 
@@ -64,7 +59,7 @@ class mxCurrentRootChange {
       this.view.refresh();
     }
 
-    const name: string = this.isUp ? mxEvent.UP : mxEvent.DOWN;
+    const name = this.isUp ? mxEvent.UP : mxEvent.DOWN;
 
     this.view.fireEvent(
       new mxEventObject(
@@ -75,6 +70,7 @@ class mxCurrentRootChange {
         this.previous
       )
     );
+
     this.isUp = !this.isUp;
   }
 }

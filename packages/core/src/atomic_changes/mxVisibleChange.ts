@@ -1,3 +1,8 @@
+import mxCell from '../view/cell/mxCell';
+import mxGraphModel from '../view/graph/mxGraphModel';
+
+import type { UndoableChange } from '../types';
+
 /**
  * Class: mxVisibleChange
  *
@@ -8,8 +13,13 @@
  * Constructs a change of a visible state in the
  * specified model.
  */
-class mxVisibleChange {
-  constructor(model, cell, visible) {
+class mxVisibleChange implements UndoableChange {
+  model: mxGraphModel;
+  cell: mxCell;
+  visible: boolean;
+  previous: boolean;
+
+  constructor(model: mxGraphModel, cell: mxCell, visible: boolean) {
     this.model = model;
     this.cell = cell;
     this.visible = visible;
@@ -22,17 +32,13 @@ class mxVisibleChange {
    * Changes the visible state of {@link cell}` to {@link previous}` using
    * <mxGraphModel.visibleStateForCellChanged>.
    */
-  // execute(): void;
   execute() {
-    if (this.cell != null) {
-      this.visible = this.previous;
-      this.previous = this.model.visibleStateForCellChanged(
-        this.cell,
-        this.previous
-      );
-    }
+    this.visible = this.previous;
+    this.previous = this.model.visibleStateForCellChanged(
+      this.cell,
+      this.previous
+    );
   }
 }
 
 export default mxVisibleChange;
-// import('../serialization/mxGenericChangeCodec');

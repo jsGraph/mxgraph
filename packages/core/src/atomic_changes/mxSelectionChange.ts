@@ -5,11 +5,17 @@ import mxEvent from '../util/event/mxEvent';
 import mxGraphSelectionModel from '../view/graph/mxGraphSelectionModel';
 import mxCell from '../view/cell/mxCell';
 
+import type { UndoableChange } from '../types';
+
 /**
  * @class mxSelectionChange
  * Action to change the current root in a view.
  */
-class mxSelectionChange {
+class mxSelectionChange implements UndoableChange {
+  selectionModel: mxGraphSelectionModel;
+  added: mxCell[];
+  removed: mxCell[];
+
   constructor(
     selectionModel: mxGraphSelectionModel,
     added: mxCell[] = [],
@@ -20,16 +26,9 @@ class mxSelectionChange {
     this.removed = removed.slice();
   }
 
-  selectionModel: mxGraphSelectionModel;
-
-  added: mxCell[];
-
-  removed: mxCell[];
-
   /**
    * Changes the current root of the view.
    */
-  // execute(): void;
   execute() {
     const t0: any = mxLog.enter('mxSelectionChange.execute');
 
@@ -37,16 +36,12 @@ class mxSelectionChange {
       mxResources.get(this.selectionModel.updatingSelectionResource) ||
       this.selectionModel.updatingSelectionResource;
 
-    if (this.removed != null) {
-      for (const removed of this.removed) {
-        this.selectionModel.cellRemoved(removed);
-      }
+    for (const removed of this.removed) {
+      this.selectionModel.cellRemoved(removed);
     }
 
-    if (this.added != null) {
-      for (const added of this.added) {
-        this.selectionModel.cellAdded(added);
-      }
+    for (const added of this.added) {
+      this.selectionModel.cellAdded(added);
     }
 
     [this.added, this.removed] = [this.removed, this.added];

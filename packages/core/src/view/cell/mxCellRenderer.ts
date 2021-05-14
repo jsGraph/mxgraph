@@ -47,7 +47,7 @@ import {
   SHAPE_SWIMLANE,
   SHAPE_TRIANGLE,
 } from '../../util/mxConstants';
-import mxUtils from '../../util/mxUtils';
+import mxUtils, { convertPoint, getValue } from '../../util/mxUtils';
 import mxRectangle from '../../util/datatypes/mxRectangle';
 import mxStencilRegistry from '../../shape/node/mxStencilRegistry';
 import mxEvent from '../../util/event/mxEvent';
@@ -111,7 +111,6 @@ class mxCellRenderer {
    *
    * Defines the default shape for edges. Default is <mxConnector>.
    */
-  // defaultEdgeShape: mxConnector;
   defaultEdgeShape: typeof mxShape = mxConnector;
 
   /**
@@ -119,7 +118,6 @@ class mxCellRenderer {
    *
    * Defines the default shape for vertices. Default is <mxRectangleShape>.
    */
-  // defaultVertexShape: mxRectangleShape;
   defaultVertexShape: typeof mxRectangleShape = mxRectangleShape;
 
   /**
@@ -127,7 +125,6 @@ class mxCellRenderer {
    *
    * Defines the default shape for labels. Default is <mxText>.
    */
-  // defaultTextShape: mxText;
   defaultTextShape: typeof mxText = mxText;
 
   /**
@@ -136,8 +133,7 @@ class mxCellRenderer {
    * Specifies if the folding icon should ignore the horizontal
    * orientation of a swimlane. Default is true.
    */
-  // legacyControlPosition: boolean;
-  legacyControlPosition: boolean = true;
+  legacyControlPosition = true;
 
   /**
    * Variable: legacySpacing
@@ -145,24 +141,21 @@ class mxCellRenderer {
    * Specifies if spacing and label position should be ignored if overflow is
    * fill or width. Default is true for backwards compatiblity.
    */
-  // legacySpacing: boolean;
-  legacySpacing: boolean = true;
+  legacySpacing = true;
 
   /**
    * Variable: antiAlias
    *
    * Anti-aliasing option for new shapes. Default is true.
    */
-  // antiAlias: boolean;
-  antiAlias: boolean = true;
+  antiAlias = true;
 
   /**
    * Variable: minSvgStrokeWidth
    *
    * Minimum stroke width for SVG output.
    */
-  // minSvgStrokeWidth: number;
-  minSvgStrokeWidth: number = 1;
+  minSvgStrokeWidth = 1;
 
   /**
    * Variable: forceControlClickHandler
@@ -170,8 +163,7 @@ class mxCellRenderer {
    * Specifies if the enabled state of the graph should be ignored in the control
    * click handler (to allow folding in disabled graphs). Default is false.
    */
-  // forceControlClickHandler: boolean;
-  forceControlClickHandler: boolean = false;
+  forceControlClickHandler = false;
 
   /**
    * Registers the given constructor under the specified key in this instance of the renderer.
@@ -183,7 +175,6 @@ class mxCellRenderer {
    * @param key the shape name.
    * @param shape constructor of the {@link mxShape} subclass.
    */
-  // static registerShape(key: string, shape: new (...args: any) => mxShape): void;
   static registerShape(key: string, shape: typeof mxShape) {
     mxCellRenderer.defaultShapes[key] = shape;
   }
@@ -198,11 +189,12 @@ class mxCellRenderer {
    *
    * state - <mxCellState> for which the shape should be initialized.
    */
-  // initializeShape(state: mxCellState): void;
   initializeShape(state: mxCellState) {
-    (<mxShape>state.shape).dialect = state.view.graph.dialect;
-    this.configureShape(state);
-    (<mxShape>state.shape).init(state.view.getDrawPane());
+    if (state.shape) {
+      state.shape.dialect = state.view.graph.dialect;
+      this.configureShape(state);
+      state.shape.init(state.view.getDrawPane());
+    }
   }
 
   /**
@@ -214,21 +206,20 @@ class mxCellRenderer {
    *
    * state - <mxCellState> for which the shape should be created.
    */
-  // createShape(state: mxCellState): mxShape;
-  createShape(state: mxCellState): mxShape | null {
+  createShape(state: mxCellState) {
     let shape = null;
 
-    if (state.style != null) {
-      // Checks if there is a stencil for the name and creates
-      // a shape instance for the stencil if one exists
-      const stencil = mxStencilRegistry.getStencil(state.style.shape);
-      if (stencil != null) {
-        shape = new mxShape(stencil);
-      } else {
-        const ctor = this.getShapeConstructor(state);
-        shape = new ctor();
-      }
+    // Checks if there is a stencil for the name and creates
+    // a shape instance for the stencil if one exists
+    const stencil = mxStencilRegistry.getStencil(state.style.shape);
+
+    if (stencil) {
+      shape = new mxShape(stencil);
+    } else {
+      const ctor = this.getShapeConstructor(state);
+      shape = new ctor();
     }
+
     return shape;
   }
 
@@ -241,12 +232,12 @@ class mxCellRenderer {
    *
    * state - <mxCellState> for which the indicator shape should be created.
    */
-  // createIndicatorShape(state: mxCellState): void;
-  createIndicatorShape(state: mxCellState): void {
-    // @ts-ignore
-    state.shape.indicatorShape = this.getShape(
-      <string>state.view.graph.getIndicatorShape(state)
-    );
+  createIndicatorShape(state: mxCellState) {
+    if (state.shape) {
+      state.shape.indicatorShape = this.getShape(
+        state.view.graph.getIndicatorShape(state)
+      );
+    }
   }
 
   /**
@@ -254,10 +245,8 @@ class mxCellRenderer {
    *
    * Returns the shape for the given name from <defaultShapes>.
    */
-  // getShape(name: string): mxShape;
-  getShape(name: string): typeof mxShape {
-    // @ts-ignore
-    return name != null ? mxCellRenderer.defaultShapes[name] : null;
+  getShape(name: string | null) {
+    return name ? mxCellRenderer.defaultShapes[name] : null;
   }
 
   /**
@@ -265,14 +254,15 @@ class mxCellRenderer {
    *
    * Returns the constructor to be used for creating the shape.
    */
-  // getShapeConstructor(state: mxCellState): any;
   getShapeConstructor(state: mxCellState) {
     let ctor = this.getShape(state.style.shape);
-    if (ctor == null) {
+
+    if (!ctor) {
       ctor = <typeof mxShape>(
         (state.cell.isEdge() ? this.defaultEdgeShape : this.defaultVertexShape)
       );
     }
+
     return ctor;
   }
 
@@ -285,19 +275,21 @@ class mxCellRenderer {
    *
    * state - <mxCellState> for which the shape should be configured.
    */
-  // configureShape(state: mxCellState): void;
   configureShape(state: mxCellState) {
-    const shape = <any>state.shape;
-    shape.apply(state);
-    shape.image = state.view.graph.getImage(state);
-    shape.indicatorColor = state.view.graph.getIndicatorColor(state);
-    shape.indicatorStrokeColor = state.style.indicatorStrokeColor;
-    shape.indicatorGradientColor = state.view.graph.getIndicatorGradientColor(
-      state
-    );
-    shape.indicatorDirection = state.style.indicatorDirection;
-    shape.indicatorImage = state.view.graph.getIndicatorImage(state);
-    this.postConfigureShape(state);
+    const shape = state.shape;
+
+    if (shape) {
+      shape.apply(state);
+      shape.image = state.view.graph.getImage(state);
+      shape.indicatorColor = state.view.graph.getIndicatorColor(state);
+      shape.indicatorStrokeColor = state.style.indicatorStrokeColor;
+      shape.indicatorGradientColor = state.view.graph.getIndicatorGradientColor(
+        state
+      );
+      shape.indicatorDirection = state.style.indicatorDirection;
+      shape.indicatorImage = state.view.graph.getIndicatorImage(state);
+      this.postConfigureShape(state);
+    }
   }
 
   /**
@@ -330,12 +322,7 @@ class mxCellRenderer {
     // LATER: Check if the color has actually changed
     if (state.style != null) {
       const values = ['inherit', 'swimlane', 'indicated'];
-      const styles = [
-        'fillColor',
-        'strokeColor',
-        'gradientColor',
-        'fontColor',
-      ];
+      const styles = ['fillColor', 'strokeColor', 'gradientColor', 'fontColor'];
 
       for (let i = 0; i < styles.length; i += 1) {
         if (values.indexOf(state.style[styles[i]]) >= 0) {
@@ -368,9 +355,7 @@ class mxCellRenderer {
       } else if (value === 'swimlane') {
         // @ts-ignore
         shape[field] =
-          key === 'strokeColor' || key === 'fontColor'
-            ? '#000000'
-            : '#ffffff';
+          key === 'strokeColor' || key === 'fontColor' ? '#000000' : '#ffffff';
 
         // @ts-ignore
         if (state.cell.getTerminal(false) != null) {
@@ -502,7 +487,7 @@ class mxCellRenderer {
 
           // Dispatches the drop event to the graph which
           // consumes and executes the source function
-          const pt = mxUtils.convertPoint(graph.container, x, y);
+          const pt = convertPoint(graph.container, x, y);
           result = <mxCellState>(
             graph.view.getState(graph.getCellAt(pt.x, pt.y))
           );
@@ -903,7 +888,7 @@ class mxCellRenderer {
 
         // Dispatches the drop event to the graph which
         // consumes and executes the source function
-        const pt = mxUtils.convertPoint(graph.container, x, y);
+        const pt = convertPoint(graph.container, x, y);
         result = <mxCellState>graph.view.getState(graph.getCellAt(pt.x, pt.y));
       }
 
@@ -1191,16 +1176,8 @@ class mxCellRenderer {
 
     // Shape can modify its label bounds
     if (state.shape != null) {
-      const hpos = mxUtils.getValue(
-        state.style,
-        'labelPosition',
-        ALIGN_CENTER
-      );
-      const vpos = mxUtils.getValue(
-        state.style,
-        'verticalLabelPosition',
-        ALIGN_MIDDLE
-      );
+      const hpos = getValue(state.style, 'labelPosition', ALIGN_CENTER);
+      const vpos = getValue(state.style, 'verticalLabelPosition', ALIGN_MIDDLE);
 
       if (hpos === ALIGN_CENTER && vpos === ALIGN_MIDDLE) {
         bounds = state.shape.getLabelBounds(bounds);
@@ -1208,7 +1185,7 @@ class mxCellRenderer {
     }
 
     // Label width style overrides actual label width
-    const lw = mxUtils.getValue(state.style, 'labelWidth', null);
+    const lw = getValue(state.style, 'labelWidth', null);
 
     if (lw != null) {
       bounds.width = parseFloat(lw) * scale;
@@ -1240,8 +1217,7 @@ class mxCellRenderer {
 
     if (
       !this.legacySpacing ||
-      (state.style.overflow !== 'fill' &&
-        state.style.overflow !== 'width')
+      (state.style.overflow !== 'fill' && state.style.overflow !== 'width')
     ) {
       const s = state.view.scale;
       // @ts-ignore
@@ -1249,17 +1225,9 @@ class mxCellRenderer {
       bounds.x += spacing.x * s;
       bounds.y += spacing.y * s;
 
-      const hpos = mxUtils.getValue(
-        state.style,
-        'labelPosition',
-        ALIGN_CENTER
-      );
-      const vpos = mxUtils.getValue(
-        state.style,
-        'verticalLabelPosition',
-        ALIGN_MIDDLE
-      );
-      const lw = mxUtils.getValue(state.style, 'labelWidth', null);
+      const hpos = getValue(state.style, 'labelPosition', ALIGN_CENTER);
+      const vpos = getValue(state.style, 'verticalLabelPosition', ALIGN_MIDDLE);
+      const lw = getValue(state.style, 'labelWidth', null);
 
       bounds.width = Math.max(
         0,
@@ -1294,7 +1262,7 @@ class mxCellRenderer {
 
       if (bounds.x !== cx || bounds.y !== cy) {
         const rad = theta * (Math.PI / 180);
-        const pt = mxUtils.getRotatedPoint(
+        const pt = getRotatedPoint(
           new mxPoint(bounds.x, bounds.y),
           Math.cos(rad),
           Math.sin(rad),
@@ -1321,11 +1289,8 @@ class mxCellRenderer {
     this.createCellOverlays(state);
 
     if (state.overlays != null) {
-      const rot = mxUtils.mod(
-        mxUtils.getValue(state.style, 'rotation', 0),
-        90
-      );
-      const rad = mxUtils.toRadians(rot);
+      const rot = mod(getValue(state.style, 'rotation', 0), 90);
+      const rad = toRadians(rot);
       const cos = Math.cos(rad);
       const sin = Math.sin(rad);
 
@@ -1338,7 +1303,7 @@ class mxCellRenderer {
             let cx = bounds.getCenterX();
             let cy = bounds.getCenterY();
 
-            const point = mxUtils.getRotatedPoint(
+            const point = getRotatedPoint(
               new mxPoint(cx, cy),
               cos,
               sin,
@@ -1383,7 +1348,7 @@ class mxCellRenderer {
       const bounds = this.getControlBounds(state, image.width, image.height);
 
       const r = this.legacyControlPosition
-        ? mxUtils.getValue(state.style, 'rotation', 0)
+        ? getValue(state.style, 'rotation', 0)
         : // @ts-ignore
           state.shape.getTextRotation();
       const s = state.view.scale;
@@ -1430,7 +1395,7 @@ class mxCellRenderer {
           let rot = state.shape.getShapeRotation();
 
           if (this.legacyControlPosition) {
-            rot = mxUtils.getValue(state.style, 'rotation', 0);
+            rot = getValue(state.style, 'rotation', 0);
           } else if (state.shape.isPaintBoundsInverted()) {
             const t = (state.width - state.height) / 2;
             cx += t;
@@ -1438,11 +1403,11 @@ class mxCellRenderer {
           }
 
           if (rot !== 0) {
-            const rad = mxUtils.toRadians(rot);
+            const rad = toRadians(rot);
             const cos = Math.cos(rad);
             const sin = Math.sin(rad);
 
-            const point = mxUtils.getRotatedPoint(
+            const point = getRotatedPoint(
               new mxPoint(cx, cy),
               cos,
               sin,
@@ -1665,7 +1630,7 @@ class mxCellRenderer {
     } else if (
       !force &&
       state.shape != null &&
-      (!mxUtils.equalEntries(state.shape.style, state.style) ||
+      (!equalEntries(state.shape.style, state.style) ||
         this.checkPlaceholderStyles(state))
     ) {
       state.shape.resetStyles();
@@ -1754,7 +1719,7 @@ class mxCellRenderer {
       shape.scale !== state.view.scale ||
       (state.absolutePoints == null && !shape.bounds.equals(state)) ||
       (state.absolutePoints != null &&
-        !mxUtils.equalPoints(shape.points, state.absolutePoints))
+        !equalPoints(shape.points, state.absolutePoints))
     );
   }
 

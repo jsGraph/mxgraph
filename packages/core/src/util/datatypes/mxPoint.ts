@@ -16,9 +16,9 @@
  * coordinates are given, then the default values for <x> and <y> are used.
  */
 class mxPoint {
-  constructor(x, y) {
-    this.x = x != null ? x : 0;
-    this.y = y != null ? y : 0;
+  constructor(x: number = 0, y: number = 0) {
+    this.x = x;
+    this.y = y;
   }
 
   /**
@@ -26,38 +26,32 @@ class mxPoint {
    *
    * Holds the x-coordinate of the point. Default is 0.
    */
-  // x: number;
-  _x = null;
+  _x = 0;
 
   /**
    * Variable: y
    *
    * Holds the y-coordinate of the point. Default is 0.
    */
-  // y: number;
-  _y = null;
+  _y = 0;
 
   get x() {
-    return this._x || 0;
+    return this._x;
   }
 
-  set x(x) {
-    x = parseFloat(x);
-    if (Number.isNaN(x)) {
-      throw new Error('Invalid x supplied');
-    }
+  set x(x: number) {
+    if (Number.isNaN(x)) throw new Error('Invalid x supplied.');
+
     this._x = x;
   }
 
   get y() {
-    return this._y || 0;
+    return this._y;
   }
 
-  set y(y) {
-    y = parseFloat(y);
-    if (Number.isNaN(y)) {
-      throw new Error('Invalid y supplied');
-    }
+  set y(y: number) {
+    if (Number.isNaN(y)) throw new Error('Invalid y supplied.');
+
     this._y = y;
   }
 
@@ -66,9 +60,10 @@ class mxPoint {
    *
    * Returns true if the given object equals this point.
    */
-  // equals(obj: mxPoint): boolean;
-  equals(obj) {
-    return obj != null && obj.x == this.x && obj.y == this.y;
+  equals(p: mxPoint | null) {
+    if (!p) return false;
+
+    return p.x === this.x && p.y === this.y;
   }
 
   /**
@@ -76,7 +71,6 @@ class mxPoint {
    *
    * Returns a clone of this <mxPoint>.
    */
-  // clone(): mxPoint;
   clone() {
     return new mxPoint(this.x, this.y);
   }

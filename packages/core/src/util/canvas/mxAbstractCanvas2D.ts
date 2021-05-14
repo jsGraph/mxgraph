@@ -4,7 +4,7 @@
  * Updated to ES9 syntax by David Morrissey 2021
  * Type definitions from the typed-mxgraph project
  */
-import mxUtils from '../mxUtils';
+import { arcToCurves, getRotatedPoint } from '../mxUtils';
 import {
   DEFAULT_FONTFAMILY,
   DEFAULT_FONTSIZE,
@@ -16,6 +16,9 @@ import {
 } from '../mxConstants';
 import mxUrlConverter from '../network/mxUrlConverter';
 import mxPoint from '../datatypes/mxPoint';
+import { clone } from '../mxCloneUtils';
+
+import type { CanvasState, ColorValue } from '../../types';
 
 /**
  * Class: mxAbstractCanvas2D
@@ -38,26 +41,28 @@ class mxAbstractCanvas2D {
     this.reset();
   }
 
+  converter: mxUrlConverter;
+
   /**
    * Variable: state
    *
    * Holds the current state.
    */
-  state = null;
+  state: CanvasState = this.createState();
 
   /**
    * Variable: states
    *
    * Stack of states.
    */
-  states = null;
+  states: CanvasState[] = [];
 
   /**
    * Variable: path
    *
    * Holds the current path as an array.
    */
-  path = null;
+  path: (string | number)[] = [];
 
   /**
    * Variable: rotateHtml
@@ -181,7 +186,7 @@ class mxAbstractCanvas2D {
       rotation: 0,
       rotationCx: 0,
       rotationCy: 0,
-    };
+    } as CanvasState;
   }
 
   /**
@@ -189,8 +194,8 @@ class mxAbstractCanvas2D {
    *
    * Rounds all numbers to integers.
    */
-  format(value) {
-    return Math.round(parseFloat(value));
+  format(value: number) {
+    return Math.round(value);
   }
 
   /**
@@ -198,20 +203,18 @@ class mxAbstractCanvas2D {
    *
    * Adds the given operation to the path.
    */
-  addOp = (...args) => {
-    if (this.path != null) {
-      this.path.push(args[0]);
+  addOp = (op: string, ...args: number[]) => {
+    this.path.push(op);
 
-      if (args.length > 2) {
-        const s = this.state;
+    if (args.length > 1) {
+      const s = this.state;
 
-        for (let i = 2; i < args.length; i += 2) {
-          this.lastX = args[i - 1];
-          this.lastY = args[i];
+      for (let i = 1; i < args.length; i += 2) {
+        this.lastX = args[i - 1];
+        this.lastY = args[i];
 
-          this.path.push(this.format((this.lastX + s.dx) * s.scale));
-          this.path.push(this.format((this.lastY + s.dy) * s.scale));
-        }
+        this.path.push(this.format((this.lastX + s.dx) * s.scale));
+        this.path.push(this.format((this.lastY + s.dy) * s.scale));
       }
     }
   };
@@ -221,10 +224,10 @@ class mxAbstractCanvas2D {
    *
    * Rotates the given point and returns the result as an <mxPoint>.
    */
-  rotatePoint(x, y, theta, cx, cy) {
+  rotatePoint(x: number, y: number, theta: number, cx: number, cy: number) {
     const rad = theta * (Math.PI / 180);
 
-    return mxUtils.getRotatedPoint(
+    return getRotatedPoint(
       new mxPoint(x, y),
       Math.cos(rad),
       Math.sin(rad),
@@ -239,7 +242,7 @@ class mxAbstractCanvas2D {
    */
   save() {
     this.states.push(this.state);
-    this.state = mxUtils.clone(this.state);
+    this.state = clone(this.state);
   }
 
   /**
@@ -248,9 +251,9 @@ class mxAbstractCanvas2D {
    * Restores the current state.
    */
   restore() {
-    if (this.states.length > 0) {
-      this.state = this.states.pop();
-    }
+    const state = this.states.pop();
+
+    if (state) this.state = state;
   }
 
   /**
@@ -258,7 +261,7 @@ class mxAbstractCanvas2D {
    *
    * Sets the current link. Hook for subclassers.
    */
-  setLink(link) {
+  setLink(link: string | null) {
     // nop
   }
 
@@ -267,9 +270,10 @@ class mxAbstractCanvas2D {
    *
    * Scales the current state.
    */
-  scale(value) {
+  scale(value: number) {
     this.state.scale *= value;
-    this.state.strokeWidth *= value;
+
+    if (this.state.strokeWidth !== null) this.state.strokeWidth *= value;
   }
 
   /**
@@ -277,7 +281,7 @@ class mxAbstractCanvas2D {
    *
    * Translates the current state.
    */
-  translate(dx, dy) {
+  translate(dx: number, dy: number) {
     this.state.dx += dx;
     this.state.dy += dy;
   }
@@ -287,7 +291,13 @@ class mxAbstractCanvas2D {
    *
    * Rotates the current state.
    */
-  rotate(theta, flipH, flipV, cx, cy) {
+  rotate(
+    theta: number,
+    flipH: boolean,
+    flipV: boolean,
+    cx: number,
+    cy: number
+  ) {
     // nop
   }
 
@@ -296,7 +306,7 @@ class mxAbstractCanvas2D {
    *
    * Sets the current alpha.
    */
-  setAlpha(value) {
+  setAlpha(value: number) {
     this.state.alpha = value;
   }
 
@@ -305,7 +315,7 @@ class mxAbstractCanvas2D {
    *
    * Sets the current solid fill alpha.
    */
-  setFillAlpha(value) {
+  setFillAlpha(value: number) {
     this.state.fillAlpha = value;
   }
 
@@ -314,7 +324,7 @@ class mxAbstractCanvas2D {
    *
    * Sets the current stroke alpha.
    */
-  setStrokeAlpha(value) {
+  setStrokeAlpha(value: number) {
     this.state.strokeAlpha = value;
   }
 
@@ -323,12 +333,10 @@ class mxAbstractCanvas2D {
    *
    * Sets the current fill color.
    */
-  setFillColor(value) {
-    if (value === NONE) {
-      value = null;
-    }
+  setFillColor(value: ColorValue) {
+    const v = value === NONE ? null : value;
 
-    this.state.fillColor = value;
+    this.state.fillColor = v;
     this.state.gradientColor = null;
   }
 
@@ -337,12 +345,22 @@ class mxAbstractCanvas2D {
    *
    * Sets the current gradient.
    */
-  setGradient(color1, color2, x, y, w, h, direction, alpha1, alpha2) {
+  setGradient(
+    color1: ColorValue,
+    color2: ColorValue,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    direction: string | null,
+    alpha1 = 1,
+    alpha2: number = 1
+  ) {
     const s = this.state;
     s.fillColor = color1;
-    s.gradientFillAlpha = alpha1 != null ? alpha1 : 1;
+    s.gradientFillAlpha = alpha1;
     s.gradientColor = color2;
-    s.gradientAlpha = alpha2 != null ? alpha2 : 1;
+    s.gradientAlpha = alpha2;
     s.gradientDirection = direction;
   }
 
@@ -351,12 +369,9 @@ class mxAbstractCanvas2D {
    *
    * Sets the current stroke color.
    */
-  setStrokeColor(value) {
-    if (value === NONE) {
-      value = null;
-    }
-
-    this.state.strokeColor = value;
+  setStrokeColor(value: ColorValue) {
+    const v = value === NONE ? null : value;
+    this.state.strokeColor = v;
   }
 
   /**
@@ -364,7 +379,7 @@ class mxAbstractCanvas2D {
    *
    * Sets the current stroke width.
    */
-  setStrokeWidth(value) {
+  setStrokeWidth(value: number | null) {
     this.state.strokeWidth = value;
   }
 
@@ -373,7 +388,7 @@ class mxAbstractCanvas2D {
    *
    * Enables or disables dashed lines.
    */
-  setDashed(value, fixDash) {
+  setDashed(value: boolean, fixDash = false) {
     this.state.dashed = value;
     this.state.fixDash = fixDash;
   }
@@ -383,7 +398,7 @@ class mxAbstractCanvas2D {
    *
    * Sets the current dash pattern.
    */
-  setDashPattern(value) {
+  setDashPattern(value: string) {
     this.state.dashPattern = value;
   }
 
@@ -392,7 +407,7 @@ class mxAbstractCanvas2D {
    *
    * Sets the current line cap.
    */
-  setLineCap(value) {
+  setLineCap(value: string) {
     this.state.lineCap = value;
   }
 
@@ -401,7 +416,7 @@ class mxAbstractCanvas2D {
    *
    * Sets the current line join.
    */
-  setLineJoin(value) {
+  setLineJoin(value: string) {
     this.state.lineJoin = value;
   }
 
@@ -410,7 +425,7 @@ class mxAbstractCanvas2D {
    *
    * Sets the current miter limit.
    */
-  setMiterLimit(value) {
+  setMiterLimit(value: number) {
     this.state.miterLimit = value;
   }
 
@@ -419,12 +434,9 @@ class mxAbstractCanvas2D {
    *
    * Sets the current font color.
    */
-  setFontColor(value) {
-    if (value === NONE) {
-      value = null;
-    }
-
-    this.state.fontColor = value;
+  setFontColor(value: ColorValue) {
+    const v = value === NONE ? null : value;
+    this.state.fontColor = v;
   }
 
   /**
@@ -432,12 +444,9 @@ class mxAbstractCanvas2D {
    *
    * Sets the current font background color.
    */
-  setFontBackgroundColor(value) {
-    if (value === NONE) {
-      value = null;
-    }
-
-    this.state.fontBackgroundColor = value;
+  setFontBackgroundColor(value: ColorValue) {
+    const v = value === NONE ? null : value;
+    this.state.fontBackgroundColor = v;
   }
 
   /**
@@ -445,12 +454,9 @@ class mxAbstractCanvas2D {
    *
    * Sets the current font border color.
    */
-  setFontBorderColor(value) {
-    if (value === NONE) {
-      value = null;
-    }
-
-    this.state.fontBorderColor = value;
+  setFontBorderColor(value: ColorValue) {
+    const v = value === NONE ? null : value;
+    this.state.fontBorderColor = v;
   }
 
   /**
@@ -458,8 +464,8 @@ class mxAbstractCanvas2D {
    *
    * Sets the current font size.
    */
-  setFontSize(value) {
-    this.state.fontSize = parseFloat(value);
+  setFontSize(value: number) {
+    this.state.fontSize = value;
   }
 
   /**
@@ -467,7 +473,7 @@ class mxAbstractCanvas2D {
    *
    * Sets the current font family.
    */
-  setFontFamily(value) {
+  setFontFamily(value: string) {
     this.state.fontFamily = value;
   }
 
@@ -476,11 +482,7 @@ class mxAbstractCanvas2D {
    *
    * Sets the current font style.
    */
-  setFontStyle(value) {
-    if (value == null) {
-      value = 0;
-    }
-
+  setFontStyle(value: number) {
     this.state.fontStyle = value;
   }
 
@@ -489,7 +491,7 @@ class mxAbstractCanvas2D {
    *
    * Enables or disables and configures the current shadow.
    */
-  setShadow(enabled) {
+  setShadow(enabled: boolean) {
     this.state.shadow = enabled;
   }
 
@@ -498,12 +500,9 @@ class mxAbstractCanvas2D {
    *
    * Enables or disables and configures the current shadow.
    */
-  setShadowColor(value) {
-    if (value === NONE) {
-      value = null;
-    }
-
-    this.state.shadowColor = value;
+  setShadowColor(value: ColorValue) {
+    const v = value === NONE ? null : value;
+    this.state.shadowColor = v;
   }
 
   /**
@@ -511,7 +510,7 @@ class mxAbstractCanvas2D {
    *
    * Enables or disables and configures the current shadow.
    */
-  setShadowAlpha(value) {
+  setShadowAlpha(value: number) {
     this.state.shadowAlpha = value;
   }
 
@@ -520,7 +519,7 @@ class mxAbstractCanvas2D {
    *
    * Enables or disables and configures the current shadow.
    */
-  setShadowOffset(dx, dy) {
+  setShadowOffset(dx: number, dy: number) {
     this.state.shadowDx = dx;
     this.state.shadowDy = dy;
   }
@@ -541,7 +540,7 @@ class mxAbstractCanvas2D {
    *
    *  Moves the current path the given coordinates.
    */
-  moveTo(x, y) {
+  moveTo(x: number, y: number) {
     this.addOp(this.moveOp, x, y);
   }
 
@@ -550,7 +549,7 @@ class mxAbstractCanvas2D {
    *
    * Draws a line to the given coordinates. Uses moveTo with the op argument.
    */
-  lineTo(x, y) {
+  lineTo(x: number, y: number) {
     this.addOp(this.lineOp, x, y);
   }
 
@@ -559,7 +558,7 @@ class mxAbstractCanvas2D {
    *
    * Adds a quadratic curve to the current path.
    */
-  quadTo(x1, y1, x2, y2) {
+  quadTo(x1: number, y1: number, x2: number, y2: number) {
     this.addOp(this.quadOp, x1, y1, x2, y2);
   }
 
@@ -568,7 +567,14 @@ class mxAbstractCanvas2D {
    *
    * Adds a bezier curve to the current path.
    */
-  curveTo(x1, y1, x2, y2, x3, y3) {
+  curveTo(
+    x1: number,
+    y1: number,
+    x2: number,
+    y2: number,
+    x3: number,
+    y3: number
+  ) {
     this.addOp(this.curveOp, x1, y1, x2, y2, x3, y3);
   }
 
@@ -578,8 +584,16 @@ class mxAbstractCanvas2D {
    * Adds the given arc to the current path. This is a synthetic operation that
    * is broken down into curves.
    */
-  arcTo(rx, ry, angle, largeArcFlag, sweepFlag, x, y) {
-    const curves = mxUtils.arcToCurves(
+  arcTo(
+    rx: number,
+    ry: number,
+    angle: number,
+    largeArcFlag: boolean,
+    sweepFlag: boolean,
+    x: number,
+    y: number
+  ) {
+    const curves = arcToCurves(
       this.lastX,
       this.lastY,
       rx,
@@ -610,7 +624,14 @@ class mxAbstractCanvas2D {
    *
    * Closes the current path.
    */
-  close(x1, y1, x2, y2, x3, y3) {
+  close(
+    x1?: number,
+    y1?: number,
+    x2?: number,
+    y2?: number,
+    x3?: number,
+    y3?: number
+  ) {
     this.addOp(this.closeOp);
   }
 

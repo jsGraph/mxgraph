@@ -6,7 +6,7 @@
  */
 
 import mxEventSource from '../../util/event/mxEventSource';
-import mxUtils from '../../util/mxUtils';
+import { getValue } from '../../util/mxUtils';
 import mxEvent from '../../util/event/mxEvent';
 import mxRectangle from '../../util/datatypes/mxRectangle';
 import mxGraph from './mxGraph';
@@ -208,7 +208,7 @@ class mxSwimlaneManager extends mxEventSource {
   isCellHorizontal(cell: mxCell): boolean {
     if ((<mxGraph>this.graph).isSwimlane(cell)) {
       const style = (<mxGraph>this.graph).getCellStyle(cell);
-      return mxUtils.getValue(style, 'horizontal', 1) == 1;
+      return getValue(style, 'horizontal', 1) == 1;
     }
     return !this.isHorizontal();
   }

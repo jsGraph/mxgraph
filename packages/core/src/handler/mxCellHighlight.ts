@@ -15,6 +15,7 @@ import mxRectangle from '../util/datatypes/mxRectangle';
 import mxCellState from '../view/cell/mxCellState';
 import mxGraph from '../view/graph/mxGraph';
 import mxShape from '../shape/mxShape';
+import { ColorValue } from '../types';
 
 /**
  * A helper class to highlight cells. Here is an example for a given cell.
@@ -27,59 +28,57 @@ import mxShape from '../shape/mxShape';
  */
 class mxCellHighlight {
   constructor(
-    graph: mxGraph | null = null,
-    highlightColor: string = DEFAULT_VALID_COLOR,
-    strokeWidth: number = HIGHLIGHT_STROKEWIDTH,
-    dashed: boolean = false
+    graph: mxGraph,
+    highlightColor: ColorValue = DEFAULT_VALID_COLOR,
+    strokeWidth = HIGHLIGHT_STROKEWIDTH,
+    dashed = false
   ) {
-    if (graph != null) {
-      this.graph = graph;
-      this.highlightColor = highlightColor;
-      this.strokeWidth = strokeWidth;
-      this.dashed = dashed;
-      this.opacity = HIGHLIGHT_OPACITY;
+    this.graph = graph;
+    this.highlightColor = highlightColor;
+    this.strokeWidth = strokeWidth;
+    this.dashed = dashed;
+    this.opacity = HIGHLIGHT_OPACITY;
 
-      // Updates the marker if the graph changes
-      this.repaintHandler = () => {
-        // Updates reference to state
-        if (this.state != null) {
-          // @ts-ignore
-          const tmp = this.graph.view.getState(this.state.cell);
+    // Updates the marker if the graph changes
+    this.repaintHandler = () => {
+      // Updates reference to state
+      if (this.state != null) {
+        // @ts-ignore
+        const tmp = this.graph.view.getState(this.state.cell);
 
-          if (tmp == null) {
-            this.hide();
-          } else {
-            this.state = tmp;
-            this.repaint();
-          }
+        if (tmp == null) {
+          this.hide();
+        } else {
+          this.state = tmp;
+          this.repaint();
         }
-      };
+      }
+    };
 
-      this.graph.getView().addListener(mxEvent.SCALE, this.repaintHandler);
-      this.graph.getView().addListener(mxEvent.TRANSLATE, this.repaintHandler);
-      this.graph
-        .getView()
-        .addListener(mxEvent.SCALE_AND_TRANSLATE, this.repaintHandler);
-      this.graph.getModel().addListener(mxEvent.CHANGE, this.repaintHandler);
+    this.graph.getView().addListener(mxEvent.SCALE, this.repaintHandler);
+    this.graph.getView().addListener(mxEvent.TRANSLATE, this.repaintHandler);
+    this.graph
+      .getView()
+      .addListener(mxEvent.SCALE_AND_TRANSLATE, this.repaintHandler);
+    this.graph.getModel().addListener(mxEvent.CHANGE, this.repaintHandler);
 
-      // Hides the marker if the current root changes
-      this.resetHandler = () => {
-        this.hide();
-      };
+    // Hides the marker if the current root changes
+    this.resetHandler = () => {
+      this.hide();
+    };
 
-      this.graph.getView().addListener(mxEvent.DOWN, this.resetHandler);
-      this.graph.getView().addListener(mxEvent.UP, this.resetHandler);
-    }
+    this.graph.getView().addListener(mxEvent.DOWN, this.resetHandler);
+    this.graph.getView().addListener(mxEvent.UP, this.resetHandler);
   }
 
   // TODO: Document me!!
-  highlightColor: string | null = null;
+  highlightColor: ColorValue = null;
 
-  strokeWidth: number | null = null;
+  strokeWidth: number = 0;
 
-  dashed: boolean = false;
+  dashed = false;
 
-  opacity: number = 100;
+  opacity = 100;
 
   repaintHandler: Function | null = null;
 
@@ -89,35 +88,30 @@ class mxCellHighlight {
    * Specifies if the highlights should appear on top of everything else in the overlay pane.
    * @default false
    */
-  // keepOnTop: boolean;
-  keepOnTop: boolean = false;
+  keepOnTop = false;
 
   /**
    * Reference to the enclosing {@link mxGraph}.
    * @default true
    */
-  // graph: boolean;
-  graph: mxGraph | null = null;
+  graph: mxGraph;
 
   /**
    * Reference to the {@link mxCellState}.
    * @default null
    */
-  // state: mxCellState;
   state: mxCellState | null = null;
 
   /**
    * Specifies the spacing between the highlight for vertices and the vertex.
    * @default 2
    */
-  // spacing: number;
-  spacing: number = 2;
+  spacing = 2;
 
   /**
    * Holds the handler that automatically invokes reset if the highlight should be hidden.
    * @default null
    */
-  // resetHandler: any;
   resetHandler: Function | null = null;
 
   /**
@@ -125,11 +119,10 @@ class mxCellHighlight {
    *
    * @param {string} color - String that represents the new highlight color.
    */
-  // setHighlightColor(color: string): void;
-  setHighlightColor(color: string): void {
+  setHighlightColor(color: ColorValue) {
     this.highlightColor = color;
 
-    if (this.shape != null) {
+    if (this.shape) {
       this.shape.stroke = color;
     }
   }
@@ -137,21 +130,17 @@ class mxCellHighlight {
   /**
    * Creates and returns the highlight shape for the given state.
    */
-  // drawHighlight(): void;
-  drawHighlight(): void {
+  drawHighlight() {
     this.shape = this.createShape();
     this.repaint();
 
+    const node = this.shape?.node;
     if (
       !this.keepOnTop &&
-      // @ts-ignore
-      this.shape.node.parentNode.firstChild !== this.shape.node
+      this.shape.node?.parentNode?.firstChild !== this.shape.node
     ) {
-      // @ts-ignore
       this.shape.node.parentNode.insertBefore(
-        // @ts-ignore
         this.shape.node,
-        // @ts-ignore
         this.shape.node.parentNode.firstChild
       );
     }
@@ -160,10 +149,9 @@ class mxCellHighlight {
   /**
    * Creates and returns the highlight shape for the given state.
    */
-  // createShape(): mxShape;
-  createShape(): mxShape {
+  createShape() {
     const shape = <mxShape>(
-      (<mxGraph>this.graph).cellRenderer.createShape(<mxCellState>this.state)
+      this.graph.cellRenderer.createShape(<mxCellState>this.state)
     );
 
     shape.svgStrokeTolerance = (<mxGraph>this.graph).tolerance;

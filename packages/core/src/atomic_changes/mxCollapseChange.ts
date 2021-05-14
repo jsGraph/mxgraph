@@ -1,3 +1,8 @@
+import mxCell from '../view/cell/mxCell';
+import mxGraphModel from '../view/graph/mxGraphModel';
+
+import type { UndoableChange } from '../types';
+
 /**
  * Class: mxCollapseChange
  *
@@ -8,8 +13,13 @@
  * Constructs a change of a collapsed state in the
  * specified model.
  */
-class mxCollapseChange {
-  constructor(model, cell, collapsed) {
+class mxCollapseChange implements UndoableChange {
+  model: mxGraphModel;
+  cell: mxCell;
+  collapsed: boolean;
+  previous: boolean;
+
+  constructor(model: mxGraphModel, cell: mxCell, collapsed: boolean) {
     this.model = model;
     this.cell = cell;
     this.collapsed = collapsed;
@@ -22,17 +32,13 @@ class mxCollapseChange {
    * Changes the collapsed state of {@link cell}` to {@link previous}` using
    * <mxGraphModel.collapsedStateForCellChanged>.
    */
-  // execute(): void;
   execute() {
-    if (this.cell != null) {
-      this.collapsed = this.previous;
-      this.previous = this.model.collapsedStateForCellChanged(
-        this.cell,
-        this.previous
-      );
-    }
+    this.collapsed = this.previous;
+    this.previous = this.model.collapsedStateForCellChanged(
+      this.cell,
+      this.previous
+    );
   }
 }
 
 export default mxCollapseChange;
-// import('../serialization/mxGenericChangeCodec');
